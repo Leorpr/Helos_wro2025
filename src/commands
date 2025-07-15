@@ -1,0 +1,51 @@
+#include <ESP32Servo.h>
+
+// Pines del motor DC (ajusta según tu cableado)
+#define ENA 21
+#define IN1 18
+#define IN2 19
+
+// Pin del servomotor
+#define SERVO_PIN 25
+Servo servo;
+
+// Rango del servo para dirección (pequeño ángulo)
+int center = 90;  // Centro del giro
+int turn_range = 10;  // Solo girará ±10 grados
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+
+  servo.attach(SERVO_PIN);
+  servo.write(center);  // Posición central
+}
+
+void loop() {
+  if (Serial.available()) {
+    char cmd = Serial.read();
+
+    if (cmd == 'A') {
+      digitalWrite(IN1, HIGH);
+      digitalWrite(IN2, LOW);
+      analogWrite(ENA, 255);  // velocidad media
+    }
+    else if (cmd == 'S') {
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+      analogWrite(ENA, 0);
+    }
+    else if (cmd == 'R') {
+      servo.write(center + turn_range);  // Gira a la derecha
+    }
+    else if (cmd == 'L') {
+      servo.write(center - turn_range);  // Gira a la izquierda
+    }
+    else if (cmd == 'C') {
+      servo.write(center);  // Vuelve al centro
+    }
+  }
+}
