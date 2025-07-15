@@ -15,4 +15,21 @@ This repository contains engineering materials of a self-driven vehicle's model 
 
 ## Introduction
 
-_This part must be filled by participants with the technical clarifications about the code: which modules the code consists of, how they are related to the electromechanical components of the vehicle, and what is the process to build/compile/upload the code to the vehicle’s controllers._
+This project is structured around two core components: a Raspberry Pi 5 for computer vision and decision-making, and an ESP32 microcontroller for motor and steering control. The system is designed for autonomous navigation tasks, such as wall detection and directional correction, ideal for competitions like WRO 2025.
+
+The Raspberry Pi is equipped with a USB camera and runs a Python script using OpenCV. Each video frame is analyzed by dividing it into three zones (left, center, right) and applying a binary threshold to detect obstacles such as walls. Based on the visual analysis, the Raspberry Pi sends specific single-character commands to the ESP32 over a USB-serial connection. The commands used are:
+	•	A — Advance (move forward)
+	•	S — Stop
+	•	B — Backward (reverse)
+	•	R — Turn right
+	•	L — Turn left
+	•	C — Center the servo
+
+The ESP32 receives these commands and directly controls:
+	•	A DC motor, driven via an L298N motor driver module, for forward and backward movement.
+	•	A servo motor, used for steering, which adjusts within a limited angular range to ensure precise turns.
+
+The system is powered by two separate sources: a power bank connected to the Raspberry Pi and a LiPo battery supplying the motor driver. This split power strategy avoids interference and ensures consistent operation of both control and processing units.
+
+Code is uploaded to the ESP32 using the Arduino IDE. The Raspberry Pi script is run through Python using Thonny or the terminal. The architecture cleanly separates high-level visual processing from low-level motor control, enabling responsive and intelligent movement based on real-time camera input.
+
