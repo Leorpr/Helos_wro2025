@@ -1,35 +1,120 @@
-Engineering materials
-====
+# Autonomous Robot for WRO Future Engineers
 
-This repository contains engineering materials of a self-driven vehicle's model participating in the WRO Future Engineers competition in the season 2022.
+This repository contains the complete solution for an autonomous robot designed for the **WRO Future Engineers** competition. The robot uses a **Raspberry Pi 5** with a **12MP Arducam camera (IMX708)** for computer vision and an **ESP32** for motor and servo control. The system relies on color-based decision-making and wall detection to navigate the track.
 
-## Content
+## System Overview
 
-* `t-photos` contains 2 photos of the team (an official one and one funny photo with all team members)
-* `v-photos` contains 6 photos of the vehicle (from every side, from top and bottom)
-* `video` contains the video.md file with the link to a video where driving demonstration exists
-* `schemes` contains one or several schematic diagrams in form of JPEG, PNG or PDF of the electromechanical components illustrating all the elements (electronic components and motors) used in the vehicle and how they connect to each other.
-* `src` contains code of control software for all components which were programmed to participate in the competition
-* `models` is for the files for models used by 3D printers, laser cutting machines and CNC machines to produce the vehicle elements. If there is nothing to add to this location, the directory can be removed.
-* `other` is for other files which can be used to understand how to prepare the vehicle for the competition. It may include documentation how to connect to a SBC/SBM and upload files there, datasets, hardware specifications, communication protocols descriptions etc. If there is nothing to add to this location, the directory can be removed.
+- **Raspberry Pi 5**
+  - Handles camera input and image processing with Picamera2 and OpenCV
+  - Sends movement commands via serial to the ESP32
 
-## Introduction
+- **ESP32**
+  - Controls one DC motor using an L298N driver
+  - Controls one steering servo
+  - Handles start/stop button logic
 
-This project is structured around two core components: a Raspberry Pi 5 for computer vision and decision-making, and an ESP32 microcontroller for motor and steering control. The system is designed for autonomous navigation tasks, such as wall detection and directional correction, ideal for competitions like WRO 2025.
+- **Sensors & Actuators**
+  - DC motor connected to L298N (IN1 = GPIO 18, IN2 = GPIO 19, ENA = GPIO 21)
+  - Servo connected to GPIO 25
+  - Button connected to GPIO D5 (active low)
+  - USB serial communication between Raspberry Pi and ESP32
 
-The Raspberry Pi is equipped with a USB camera and runs a Python script using OpenCV. Each video frame is analyzed by dividing it into three zones (left, center, right) and applying a binary threshold to detect obstacles such as walls. Based on the visual analysis, the Raspberry Pi sends specific single-character commands to the ESP32 over a USB-serial connection. The commands used are:
-	•	A — Advance (move forward)
-	•	S — Stop
-	•	B — Backward (reverse)
-	•	R — Turn right
-	•	L — Turn left
-	•	C — Center the servo
+## Navigation Logic
 
-The ESP32 receives these commands and directly controls:
-	•	A DC motor, driven via an L298N motor driver module, for forward and backward movement.
-	•	A servo motor, used for steering, which adjusts within a limited angular range to ensure precise turns.
+- The track is completely white with black walls (10 cm high).
+- At corners, the robot detects a **blue** or **orange** line:
+  - If **blue** appears first, the robot turns **left**
+  - If **orange** appears first, it turns **right**
+- After each turn, the robot moves forward and re-centers using wall detection.
 
-The system is powered by two separate sources: a power bank connected to the Raspberry Pi and a LiPo battery supplying the motor driver. This split power strategy avoids interference and ensures consistent operation of both control and processing units.
+## Start/Stop Control
 
-Code is uploaded to the ESP32 using the Arduino IDE. The Raspberry Pi script is run through Python using Thonny or the terminal. The architecture cleanly separates high-level visual processing from low-level motor control, enabling responsive and intelligent movement based on real-time camera input.
+- The robot waits for the user to press the button (connected to D5 on ESP32).
+- Upon first press: the robot starts the logic and motion
+- On second press: the robot stops all operations
 
+## Installation
+
+### On Raspberry Pi
+
+1. Install dependencies:
+
+   ```bash
+   sudo apt update
+   sudo apt install python3-opencv python3-picamera2
+   ```
+
+2. Enable the camera:
+
+   ```bash
+   sudo raspi-config
+   ```
+
+3. Create a systemd service to auto-start the script:
+
+   ```bash
+   sudo nano /etc/systemd/system/robot.service
+   ```
+
+   Add:
+
+   ```ini
+   [Unit]
+   Description=Robot Vision Script
+   After=network.target
+
+   [Service]
+   ExecStart=/usr/bin/python3 /home/pi/Desktop/ESTOSSI/lineas.py
+   WorkingDirectory=/home/pi/Desktop/ESTOSSI
+   StandardOutput=inherit
+   StandardError=inherit
+   Restart=always
+   User=pi
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   Then enable it:
+
+   ```bash
+   sudo systemctl daemon-reexec
+   sudo systemctl daemon-reload
+   sudo systemctl enable robot.service
+   sudo systemctl start robot.service
+   ```
+
+### On ESP32
+
+1. Flash the firmware using Arduino IDE.
+2. Required pins:
+   - Motor: IN1 = GPIO 18, IN2 = GPIO 19, ENA = GPIO 21
+   - Servo: GPIO 25
+   - Start/Stop Button: GPIO D5
+3. Commands received via serial:
+   - `'A'` = Move forward
+   - `'S'` = Stop
+   - `'L'` = Turn left
+   - `'R'` = Turn right
+   - `'C'` = Center servo
+
+## Project Files
+
+- `lineas.py`: Main computer vision script
+- `functions.py`: Custom image-processing and control functions
+- `masks.py`: HSV masks for color detection (blue and orange)
+- `esp32_control.ino`: ESP32 firmware
+
+## Requirements
+
+- Raspberry Pi OS 64-bit
+- Python 3.9 or higher
+- OpenCV 4+
+- Picamera2
+- Arduino IDE 2.x
+
+## Track Description
+
+- White floor
+- 10 cm tall black side walls
+- Colored corner lines (blue = left turn, orange = right turn)
